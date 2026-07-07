@@ -941,7 +941,12 @@ void CScrollingAlgorithm::resizeTarget(const Vector2D& delta, SP<ITarget> target
         }
     }
 
-    m_scrollingData->recalculate(true);
+    // warp during interactive drags (1:1 pointer tracking), otherwise honor
+    // misc:animate_manual_resizes like dwindle does
+    static const auto PANIMATE = CConfigValue<Config::INTEGER>("misc:animate_manual_resizes");
+    const bool        DRAGGING = g_layoutManager->dragController()->target() == target;
+
+    m_scrollingData->recalculate(DRAGGING || !*PANIMATE);
 }
 
 void CScrollingAlgorithm::recalculate(eRecalculateReason reason) {
