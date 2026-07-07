@@ -52,6 +52,9 @@ namespace Layout::Tiled {
 
         WP<SColumnData>                       self;
 
+        // width restored when `colresize maximize` un-maximizes (0 = unset)
+        float widthBeforeMaximize = 0.F;
+
         // Helper methods to access controller-managed data
         float getColumnWidth() const;
         void  setColumnWidth(float width);
