@@ -1261,6 +1261,22 @@ Config::ErrorResult CScrollingAlgorithm::layoutMsg(const std::string_view& sv) {
             m_scrollingData->recalculate();
         });
 
+        if (ARGS[1] == "maximize") {
+            // toggle: fill the viewport width <-> restore the pre-maximize width
+            auto col = TDATA->column.lock();
+            if (col) {
+                if (col->getColumnWidth() < MAX_COLUMN_WIDTH - 0.001F) {
+                    col->widthBeforeMaximize = col->getColumnWidth();
+                    col->setColumnWidth(MAX_COLUMN_WIDTH);
+                } else if (col->widthBeforeMaximize > 0.F)
+                    col->setColumnWidth(col->widthBeforeMaximize);
+                else
+                    col->setColumnWidth(m_config.configuredWidths.empty() ? 0.5F : m_config.configuredWidths[0]);
+            }
+
+            return {};
+        }
+
         if (ARGS[1][0] == '+' || ARGS[1][0] == '-') {
             if (ARGS[1] == "+conf") {
                 auto col = TDATA->column.lock();
