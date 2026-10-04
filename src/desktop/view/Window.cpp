@@ -1518,7 +1518,8 @@ void CWindow::onAck(uint32_t serial) {
         return;
 
     m_pendingSizeAck = *SERIAL;
-    std::erase_if(m_pendingSizeAcks, [&](const auto& el) { return el.first <= SERIAL->first; });
+    // compare against a copy: SERIAL points into m_pendingSizeAcks, which erase_if compacts while it runs
+    std::erase_if(m_pendingSizeAcks, [ACKED = m_pendingSizeAck->first](const auto& el) { return el.first <= ACKED; });
 
     if (m_isX11)
         return;
