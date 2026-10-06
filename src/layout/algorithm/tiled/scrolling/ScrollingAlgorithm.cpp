@@ -887,7 +887,8 @@ void CScrollingAlgorithm::resizeTarget(const Vector2D& delta, SP<ITarget> target
         }
 
     } else {
-        // resize from right edge (outer edge) - adjust column width only, keep left edge fixed
+        // resize from right edge (outer edge) - grow/shrink column width keeping the left edge fixed.
+        // Growth the right viewport boundary can't absorb spills over to the left edge.
         const float oldWidth       = CURR_COLUMN->getColumnWidth();
         const float requestedDelta = (float)DELTA_AS_PERC.x;
         float       actualDelta    = requestedDelta;
@@ -895,14 +896,29 @@ void CScrollingAlgorithm::resizeTarget(const Vector2D& delta, SP<ITarget> target
         // clamp delta so we don't shrink below MIN or grow above MAX
         const float newWidthUnclamped = oldWidth + actualDelta;
         const float newWidthClamped   = std::clamp(newWidthUnclamped, MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
-        actualDelta                   = newWidthClamped - oldWidth;
+        const float wantedDelta       = newWidthClamped - oldWidth;
+        actualDelta                   = wantedDelta;
 
         // also clamp so right edge doesn't go past right viewport boundary
         if (onScreenEnd + (actualDelta * usablePrimary) > usablePrimary)
             actualDelta = (usablePrimary - onScreenEnd) / usablePrimary;
 
-        if (actualDelta != 0.F)
-            CURR_COLUMN->setColumnWidth(oldWidth + actualDelta);
+        // grow the remainder leftward, without pushing the left edge past the left viewport boundary
+        float leftDelta = 0.F;
+        if (wantedDelta > 0.F && actualDelta < wantedDelta)
+            leftDelta = std::clamp(wantedDelta - std::max(actualDelta, 0.F), 0.F, (float)std::max(onScreenStart, 0.0) / (float)usablePrimary);
+
+        if (actualDelta + leftDelta != 0.F)
+            CURR_COLUMN->setColumnWidth(oldWidth + actualDelta + leftDelta);
+
+        // shift the camera so the right edge stays put while the column grows into the left
+        if (leftDelta != 0.F)
+            m_scrollingData->controller->adjustOffset(leftDelta * usablePrimary);
+
+        // a column pinned to the right viewport boundary shrinks from the left too, so it doesn't
+        // uncover empty space on the right; never scroll back past the start of the first column
+        if (actualDelta < 0.F && onScreenEnd >= usablePrimary - 1.0)
+            m_scrollingData->controller->adjustOffset(std::max((double)actualDelta * usablePrimary, std::min(cameraOffset, 0.0) - cameraOffset));
     }
 
     if (DATA->column->targetDatas.size() > 1) {
